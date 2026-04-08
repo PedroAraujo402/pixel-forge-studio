@@ -1,0 +1,1944 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelForge Studio</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --panel: #12121a;
+    --panel2: #1a1a26;
+    --border: #2a2a40;
+    --accent: #ff2d78;
+    --accent2: #7c3aed;
+    --accent3: #00e5ff;
+    --gold: #ffd700;
+    --text: #e0e0ff;
+    --muted: #666688;
+    --pixel: 2px;
+    --green: #39ff14;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--panel);
+    border-bottom: 2px solid var(--accent);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 0 30px rgba(255,45,120,0.2);
+  }
+
+  .logo {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 14px;
+    color: var(--accent);
+    text-shadow: 0 0 10px var(--accent), 2px 2px 0 var(--accent2);
+    letter-spacing: 2px;
+  }
+
+  .logo span { color: var(--accent3); }
+
+  .header-nav {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+  }
+
+  .nav-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    image-rendering: pixelated;
+  }
+
+  .nav-btn:hover, .nav-btn.active {
+    border-color: var(--accent3);
+    color: var(--accent3);
+    background: rgba(0,229,255,0.05);
+    box-shadow: 0 0 8px rgba(0,229,255,0.2);
+  }
+
+  /* LAYOUT */
+  .workspace {
+    display: flex;
+    height: calc(100vh - 58px);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 220px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .sidebar-section {
+    padding: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    color: var(--accent);
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+  }
+
+  .tool-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .tool-btn {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    padding: 8px 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  .tool-btn .icon { font-size: 16px; }
+
+  .tool-btn:hover, .tool-btn.active {
+    border-color: var(--accent2);
+    background: rgba(124,58,237,0.15);
+    color: #c4b5fd;
+  }
+
+  .color-palette {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 3px;
+    margin-top: 6px;
+  }
+
+  .color-swatch {
+    width: 100%;
+    aspect-ratio: 1;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    image-rendering: pixelated;
+    transition: transform 0.1s;
+  }
+
+  .color-swatch:hover { transform: scale(1.2); border-color: white; }
+  .color-swatch.selected { border: 2px solid white; box-shadow: 0 0 6px white; }
+
+  .current-colors {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    align-items: center;
+  }
+
+  .current-fg, .current-bg-color {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--border);
+    cursor: pointer;
+    image-rendering: pixelated;
+  }
+
+  .current-bg-color {
+    margin-top: 6px;
+    margin-left: -12px;
+  }
+
+  label.sidebar-label {
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 4px;
+    margin-top: 10px;
+  }
+
+  .sidebar input[type=range] {
+    width: 100%;
+    accent-color: var(--accent);
+  }
+
+  .sidebar input[type=number],
+  .sidebar select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 5px 8px;
+    outline: none;
+  }
+
+  .sidebar select option { background: var(--bg); }
+
+  /* MAIN CANVAS AREA */
+  .main-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .tab-bar {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 2px;
+    padding: 6px 12px 0;
+    flex-shrink: 0;
+  }
+
+  .tab {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    color: var(--muted);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 6px 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    top: 1px;
+  }
+
+  .tab.active {
+    background: var(--bg);
+    color: var(--accent3);
+    border-color: var(--accent3);
+    border-bottom-color: var(--bg);
+  }
+
+  .view-area {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* CANVAS PANEL */
+  .canvas-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    background-image:
+      linear-gradient(rgba(42,42,64,0.4) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(42,42,64,0.4) 1px, transparent 1px);
+    background-size: 20px 20px;
+    overflow: auto;
+    position: relative;
+    gap: 12px;
+    padding: 20px;
+  }
+
+  .canvas-wrapper {
+    position: relative;
+    image-rendering: pixelated;
+    box-shadow: 0 0 0 2px var(--border), 0 0 40px rgba(0,0,0,0.8);
+  }
+
+  #pixelCanvas {
+    display: block;
+    image-rendering: pixelated;
+    cursor: crosshair;
+  }
+
+  #gridOverlay {
+    position: absolute;
+    top: 0; left: 0;
+    pointer-events: none;
+    image-rendering: pixelated;
+  }
+
+  .zoom-controls {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 2px;
+  }
+
+  .zoom-btn {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    width: 28px; height: 28px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.1s;
+  }
+
+  .zoom-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+
+  #zoomLabel {
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 40px;
+    text-align: center;
+  }
+
+  .canvas-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .action-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .action-btn.primary {
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 8px rgba(255,45,120,0.2);
+  }
+
+  .action-btn.primary:hover {
+    background: rgba(255,45,120,0.1);
+    box-shadow: 0 0 16px rgba(255,45,120,0.4);
+  }
+
+  /* CHARACTER SHEET PANEL */
+  .sheet-panel {
+    width: 300px;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .sheet-header {
+    padding: 14px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    color: var(--gold);
+    text-shadow: 0 0 8px var(--gold);
+    letter-spacing: 1px;
+  }
+
+  .sheet-slots {
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .sprite-slot {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+
+  .sprite-slot:hover {
+    border-color: var(--accent2);
+    background: rgba(124,58,237,0.08);
+  }
+
+  .sprite-slot.current-slot {
+    border-color: var(--accent);
+    box-shadow: 0 0 10px rgba(255,45,120,0.3);
+  }
+
+  .slot-canvas {
+    image-rendering: pixelated;
+    width: 64px;
+    height: 64px;
+    background: repeating-linear-gradient(
+      45deg,
+      #1a1a26 0, #1a1a26 4px,
+      #12121a 4px, #12121a 8px
+    );
+  }
+
+  .slot-label {
+    font-size: 9px;
+    color: var(--muted);
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .slot-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+
+  .slot-badge.filled { background: var(--green); box-shadow: 0 0 4px var(--green); }
+
+  .export-section {
+    padding: 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .export-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  /* AI PANEL */
+  .ai-panel {
+    width: 300px;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+
+  .ai-header {
+    padding: 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .ai-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    color: var(--accent2);
+    text-shadow: 0 0 8px var(--accent2);
+    letter-spacing: 1px;
+  }
+
+  .ai-status {
+    margin-left: auto;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .ai-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+  }
+
+  .msg {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 90%;
+  }
+
+  .msg.user { align-self: flex-end; }
+  .msg.ai { align-self: flex-start; }
+
+  .msg-bubble {
+    padding: 8px 12px;
+    font-size: 11px;
+    line-height: 1.6;
+    border: 1px solid;
+  }
+
+  .msg.user .msg-bubble {
+    background: rgba(255,45,120,0.1);
+    border-color: rgba(255,45,120,0.4);
+    color: #ffa0c0;
+    border-radius: 8px 0 8px 8px;
+  }
+
+  .msg.ai .msg-bubble {
+    background: rgba(124,58,237,0.1);
+    border-color: rgba(124,58,237,0.4);
+    color: #c4b5fd;
+    border-radius: 0 8px 8px 8px;
+  }
+
+  .msg-from {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  .msg.user .msg-from { text-align: right; }
+
+  .ai-input-area {
+    border-top: 1px solid var(--border);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ai-quick-btns {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .quick-btn {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .quick-btn:hover {
+    border-color: var(--accent2);
+    color: #c4b5fd;
+  }
+
+  .ai-input-row {
+    display: flex;
+    gap: 6px;
+  }
+
+  #aiInput {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 8px 10px;
+    outline: none;
+    resize: none;
+    height: 60px;
+    transition: border-color 0.2s;
+  }
+
+  #aiInput:focus { border-color: var(--accent2); }
+
+  #aiSendBtn {
+    background: var(--accent2);
+    border: none;
+    color: white;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    padding: 0 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    letter-spacing: 2px;
+  }
+
+  #aiSendBtn:hover {
+    background: #9333ea;
+    box-shadow: 0 0 16px rgba(124,58,237,0.5);
+  }
+
+  #aiSendBtn:disabled {
+    background: var(--border);
+    cursor: not-allowed;
+  }
+
+  /* Tabs view toggle */
+  .view-section { display: none; width: 100%; height: 100%; }
+  .view-section.active { display: flex; }
+
+  /* FRAME STRIP */
+  .frame-strip {
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    padding: 8px 12px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    overflow-x: auto;
+    flex-shrink: 0;
+  }
+
+  .frame-thumb {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border);
+    image-rendering: pixelated;
+    cursor: pointer;
+    transition: all 0.1s;
+    flex-shrink: 0;
+    background: var(--bg);
+  }
+
+  .frame-thumb:hover { border-color: var(--accent3); }
+  .frame-thumb.active { border-color: var(--accent); box-shadow: 0 0 8px rgba(255,45,120,0.3); }
+
+  .add-frame-btn {
+    width: 40px; height: 40px;
+    border: 1px dashed var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+
+  .add-frame-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+
+  .strip-label {
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-right: 4px;
+    white-space: nowrap;
+  }
+
+  /* spinner */
+  .spinner {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid rgba(196,181,253,0.3);
+    border-top-color: #c4b5fd;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* HISTORY */
+  .history-dots {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin-left: 8px;
+  }
+
+  .history-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+
+  .history-dot.active { background: var(--accent3); }
+  .history-dot.filled { background: var(--muted); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    padding: 24px;
+    min-width: 320px;
+    box-shadow: 0 0 40px rgba(255,45,120,0.3);
+  }
+
+  .modal-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--accent);
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+  }
+
+  .modal-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    align-items: center;
+  }
+
+  .modal-label {
+    font-size: 11px;
+    color: var(--muted);
+    width: 80px;
+    flex-shrink: 0;
+  }
+
+  .modal input, .modal select {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    padding: 6px 8px;
+    outline: none;
+  }
+
+  .modal-btns {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    justify-content: flex-end;
+  }
+
+  input[type="color"] {
+    width: 32px;
+    height: 28px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    cursor: pointer;
+    padding: 2px;
+  }
+
+  /* SHEET VIEW */
+  .sheet-view-area {
+    flex: 1;
+    display: flex;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  .sheet-canvas-area {
+    flex: 1;
+    overflow: auto;
+    padding: 20px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    background: var(--bg);
+    background-image:
+      linear-gradient(rgba(42,42,64,0.4) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(42,42,64,0.4) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  #sheetCanvas {
+    image-rendering: pixelated;
+    box-shadow: 0 0 0 2px var(--border), 0 0 40px rgba(0,0,0,0.8);
+  }
+
+  .char-info-panel {
+    width: 260px;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    flex-shrink: 0;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .info-section-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    color: var(--gold);
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .info-field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .info-field label {
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .info-field input, .info-field textarea, .info-field select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 6px 8px;
+    outline: none;
+    width: 100%;
+    resize: none;
+  }
+
+  .info-field textarea { height: 60px; }
+
+  .info-field input:focus, .info-field textarea:focus, .info-field select:focus {
+    border-color: var(--accent2);
+  }
+
+  .stat-row {
+    display: flex;
+    gap: 6px;
+  }
+
+  .stat-box {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 6px;
+    text-align: center;
+  }
+
+  .stat-name {
+    font-size: 8px;
+    color: var(--muted);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .stat-val {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: var(--accent3);
+  }
+
+  .trait-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .trait-tag {
+    background: rgba(124,58,237,0.2);
+    border: 1px solid rgba(124,58,237,0.5);
+    color: #c4b5fd;
+    font-size: 9px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+
+  .trait-tag:hover { background: rgba(124,58,237,0.4); }
+
+  .add-trait-row {
+    display: flex;
+    gap: 4px;
+  }
+
+  .add-trait-row input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    padding: 4px 8px;
+    outline: none;
+  }
+
+  .add-trait-row button {
+    background: rgba(124,58,237,0.3);
+    border: 1px solid var(--accent2);
+    color: #c4b5fd;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Pixel<span>Forge</span></div>
+  <span style="font-size:10px;color:var(--muted);">// adult pixel art studio</span>
+  <nav class="header-nav">
+    <button class="nav-btn active" onclick="switchTab('editor')">✏️ Editor</button>
+    <button class="nav-btn" onclick="switchTab('sheet')">📋 Char Sheet</button>
+    <button class="nav-btn" onclick="switchTab('export')">📦 Export</button>
+  </nav>
+</header>
+
+<div class="workspace">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-title">// Ferramentas</div>
+      <div class="tool-grid">
+        <button class="tool-btn active" id="tool-pencil" onclick="setTool('pencil')">
+          <span class="icon">✏️</span>Lápis
+        </button>
+        <button class="tool-btn" id="tool-eraser" onclick="setTool('eraser')">
+          <span class="icon">🧹</span>Borracha
+        </button>
+        <button class="tool-btn" id="tool-fill" onclick="setTool('fill')">
+          <span class="icon">🪣</span>Balde
+        </button>
+        <button class="tool-btn" id="tool-eyedropper" onclick="setTool('eyedropper')">
+          <span class="icon">💉</span>Conta-gotas
+        </button>
+        <button class="tool-btn" id="tool-rect" onclick="setTool('rect')">
+          <span class="icon">▭</span>Retângulo
+        </button>
+        <button class="tool-btn" id="tool-line" onclick="setTool('line')">
+          <span class="icon">╱</span>Linha
+        </button>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">// Cores</div>
+      <div class="current-colors">
+        <div style="position:relative;width:44px;height:44px;">
+          <div class="current-bg-color" id="bgColorDisplay" style="background:#000000;position:absolute;bottom:0;right:0;cursor:pointer;" onclick="document.getElementById('bgColorPicker').click()" title="Cor de fundo"></div>
+          <div class="current-fg" id="fgColorDisplay" style="background:#ffffff;position:absolute;top:0;left:0;cursor:pointer;" onclick="document.getElementById('fgColorPicker').click()" title="Cor principal"></div>
+        </div>
+        <input type="color" id="fgColorPicker" value="#ffffff" oninput="setFgColor(this.value)" style="opacity:0;width:0;height:0;position:absolute;">
+        <input type="color" id="bgColorPicker" value="#000000" oninput="setBgColor(this.value)" style="opacity:0;width:0;height:0;position:absolute;">
+        <div style="font-size:9px;color:var(--muted);line-height:1.5;">
+          FG: <span id="fgHex">#ffffff</span><br>
+          BG: <span id="bgHex">#000000</span>
+        </div>
+      </div>
+
+      <div class="color-palette" id="palette"></div>
+
+      <label class="sidebar-label">Opacidade</label>
+      <input type="range" min="1" max="100" value="100" id="opacitySlider">
+
+      <label class="sidebar-label">Tamanho do pincel</label>
+      <input type="number" id="brushSize" value="1" min="1" max="8">
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">// Canvas</div>
+      <label class="sidebar-label">Largura (px)</label>
+      <input type="number" id="canvasW" value="32" min="8" max="128">
+      <label class="sidebar-label">Altura (px)</label>
+      <input type="number" id="canvasH" value="32" min="8" max="128">
+      <button class="action-btn" style="width:100%;margin-top:8px;" onclick="openNewModal()">Novo Canvas</button>
+      <label class="sidebar-label" style="margin-top:8px;">Grade</label>
+      <select id="gridSelect" onchange="renderGrid()">
+        <option value="0">Sem grade</option>
+        <option value="1" selected>1px</option>
+        <option value="2">2px</option>
+        <option value="4">4px</option>
+        <option value="8">8px</option>
+        <option value="16">16px</option>
+      </select>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">// Histórico</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="action-btn" onclick="undo()">↩ Desfazer</button>
+        <button class="action-btn" onclick="redo()">↪ Refazer</button>
+      </div>
+      <div class="history-dots" id="historyDots" style="margin-top:8px;flex-wrap:wrap;"></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-area">
+    <div class="tab-bar">
+      <button class="tab active" onclick="switchEditorView('draw')">Desenho</button>
+      <button class="tab" onclick="switchEditorView('animate')">Animação</button>
+    </div>
+
+    <div class="view-area">
+      <!-- EDITOR VIEW -->
+      <div class="view-section active" id="editorView" style="flex-direction:column;">
+        <div class="canvas-panel" id="canvasPanel">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;">
+            <div class="zoom-controls">
+              <button class="zoom-btn" onclick="adjustZoom(-1)">−</button>
+              <span id="zoomLabel">×8</span>
+              <button class="zoom-btn" onclick="adjustZoom(1)">+</button>
+            </div>
+            <div class="canvas-actions">
+              <button class="action-btn" onclick="flipH()">↔ Flip H</button>
+              <button class="action-btn" onclick="flipV()">↕ Flip V</button>
+              <button class="action-btn" onclick="rotateCanvas()">↻ Rotacionar</button>
+              <button class="action-btn primary" onclick="saveToSlot()">💾 Salvar no Sheet</button>
+            </div>
+          </div>
+
+          <div class="canvas-wrapper" id="canvasWrapper">
+            <canvas id="pixelCanvas"></canvas>
+            <canvas id="gridOverlay"></canvas>
+          </div>
+        </div>
+
+        <!-- FRAME STRIP -->
+        <div class="frame-strip" id="frameStrip">
+          <span class="strip-label">Frames:</span>
+          <div id="frameThumbs" style="display:flex;gap:8px;align-items:center;"></div>
+          <button class="add-frame-btn" onclick="addFrame()" title="Adicionar frame">+</button>
+          <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+            <span style="font-size:9px;color:var(--muted);">FPS:</span>
+            <input type="number" id="fpsInput" value="8" min="1" max="60" style="width:44px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:10px;padding:4px;outline:none;">
+            <button class="action-btn" id="playBtn" onclick="togglePlay()">▶ Play</button>
+            <canvas id="previewCanvas" width="64" height="64" style="image-rendering:pixelated;border:1px solid var(--border);background:var(--bg);"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- SHEET PANEL -->
+      <div class="sheet-panel">
+        <div class="sheet-header">📋 Character Sheet</div>
+        <div style="padding:14px;border-bottom:1px solid var(--border);">
+          <label class="sidebar-label" style="margin-top:0;">Slot atual</label>
+          <select id="slotSelect" onchange="switchSlot(this.value)" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:11px;padding:5px 8px;outline:none;">
+            <option value="0">Idle (parado)</option>
+            <option value="1">Walk (caminhar)</option>
+            <option value="2">Run (correr)</option>
+            <option value="3">Attack (ataque)</option>
+            <option value="4">Hurt (dano)</option>
+            <option value="5">Death (morte)</option>
+            <option value="6">Special 1</option>
+            <option value="7">Special 2</option>
+          </select>
+        </div>
+        <div class="sheet-slots" id="slotGrid"></div>
+        <div class="export-section">
+          <div class="export-title">// Export</div>
+          <button class="action-btn primary" onclick="exportPNG()">📥 PNG (atual)</button>
+          <button class="action-btn" onclick="exportSpritesheet()">📦 Spritesheet</button>
+          <button class="action-btn" onclick="exportSheet()">📋 Character Sheet</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI PANEL -->
+  <div class="ai-panel">
+    <div class="ai-header">
+      <div class="ai-title">// AI Assistant</div>
+      <div class="ai-status"></div>
+    </div>
+    <div class="ai-messages" id="aiMessages">
+      <div class="msg ai">
+        <div class="msg-from">PixelAI</div>
+        <div class="msg-bubble">Olá, artista! 🎮 Sou sua IA especializada em pixel art.<br><br>Posso te ajudar com:<br>• Paletas de cores para personagens<br>• Dicas de animação pixel<br>• Sugestões de design de sprites<br>• Conceitos para character sheets<br><br>Use os atalhos abaixo ou escreva o que precisar!</div>
+      </div>
+    </div>
+    <div class="ai-input-area">
+      <div class="ai-quick-btns">
+        <button class="quick-btn" onclick="quickPrompt('Sugira uma paleta de 16 cores para um personagem feminino sombrio e sedutor em pixel art')">🎨 Paleta sombria</button>
+        <button class="quick-btn" onclick="quickPrompt('Dê dicas de animação pixel para um sprite de personagem feminino andando em 4 frames')">🚶 Walk cycle</button>
+        <button class="quick-btn" onclick="quickPrompt('Como criar shading eficiente para personagens pixel art adultos? Explique técnicas de iluminação')">💡 Shading tips</button>
+        <button class="quick-btn" onclick="quickPrompt('Descreva como fazer um sprite idle convincente para personagem adulto em pixel art, com pequenas animações sutis')">😮‍💨 Idle animation</button>
+        <button class="quick-btn" onclick="quickPrompt('Quais são os tamanhos de sprite mais usados em jogos adultos de pixel art (RPG, VN, platformer)?')">📐 Tamanhos</button>
+        <button class="quick-btn" onclick="quickPrompt('Me dê um conceito detalhado de character sheet para uma personagem de jogo adulto, incluindo expressões faciais, poses e animações necessárias')">📋 Sheet concept</button>
+      </div>
+      <div class="ai-input-row">
+        <textarea id="aiInput" placeholder="Pergunte sobre paletas, animação, design de personagens..." onkeydown="handleAiKey(event)"></textarea>
+        <button id="aiSendBtn" onclick="sendAiMessage()">ENVIAR</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NEW CANVAS MODAL -->
+<div class="modal-overlay" id="newModal">
+  <div class="modal">
+    <div class="modal-title">// Novo Canvas</div>
+    <div class="modal-row">
+      <div class="modal-label">Largura</div>
+      <input type="number" id="mW" value="32" min="8" max="128">
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Altura</div>
+      <input type="number" id="mH" value="32" min="8" max="128">
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Preset</div>
+      <select onchange="applyPreset(this.value)">
+        <option value="">Custom</option>
+        <option value="16,16">16×16 (ícone)</option>
+        <option value="32,32">32×32 (sprite pequeno)</option>
+        <option value="48,64">48×64 (personagem)</option>
+        <option value="64,64">64×64 (sprite médio)</option>
+        <option value="96,128">96×128 (sprite grande)</option>
+        <option value="128,128">128×128 (boss)</option>
+      </select>
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">Fundo</div>
+      <input type="color" id="mBg" value="#000000">
+      <label style="font-size:10px;color:var(--muted);margin-left:6px;">
+        <input type="checkbox" id="mTransparent"> Transparente
+      </label>
+    </div>
+    <div class="modal-btns">
+      <button class="action-btn" onclick="closeNewModal()">Cancelar</button>
+      <button class="action-btn primary" onclick="createNewCanvas()">Criar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  tool: 'pencil',
+  fgColor: '#ffffff',
+  bgColor: '#000000',
+  zoom: 8,
+  brushSize: 1,
+  opacity: 100,
+  drawing: false,
+  lastX: -1, lastY: -1,
+  startX: -1, startY: -1,
+  canvasW: 32, canvasH: 32,
+  showGrid: 1,
+  history: [],
+  historyIndex: -1,
+  frames: [],
+  currentFrame: 0,
+  currentSlot: 0,
+  slots: Array(8).fill(null),
+  slotNames: ['Idle','Walk','Run','Attack','Hurt','Death','Special 1','Special 2'],
+  playing: false,
+  playInterval: null,
+};
+
+const palette = [
+  '#000000','#1a1a2e','#16213e','#0f3460',
+  '#533483','#e94560','#ff6b6b','#ffd700',
+  '#f9ca24','#6ab04c','#00b894','#00cec9',
+  '#0984e3','#6c5ce7','#fd79a8','#fdcb6e',
+  '#ffffff','#dfe6e9','#b2bec3','#636e72',
+  '#2d3436','#ff7675','#74b9ff','#a29bfe',
+];
+
+// ============================================================
+// CANVAS SETUP
+// ============================================================
+const canvas = document.getElementById('pixelCanvas');
+const ctx = canvas.getContext('2d', { willReadFrequently: true });
+const gridCanvas = document.getElementById('gridOverlay');
+const gridCtx = gridCanvas.getContext('2d');
+const previewCanvas = document.getElementById('previewCanvas');
+const previewCtx = previewCanvas.getContext('2d');
+
+function initCanvas(w, h, bg, transparent) {
+  state.canvasW = w;
+  state.canvasH = h;
+  canvas.width = w;
+  canvas.height = h;
+
+  if (!transparent) {
+    ctx.fillStyle = bg || '#000000';
+    ctx.fillRect(0, 0, w, h);
+  } else {
+    ctx.clearRect(0, 0, w, h);
+  }
+
+  applyZoom();
+  renderGrid();
+  pushHistory();
+}
+
+function applyZoom() {
+  const z = state.zoom;
+  canvas.style.width = (state.canvasW * z) + 'px';
+  canvas.style.height = (state.canvasH * z) + 'px';
+  gridCanvas.width = state.canvasW * z;
+  gridCanvas.height = state.canvasH * z;
+  gridCanvas.style.width = gridCanvas.width + 'px';
+  gridCanvas.style.height = gridCanvas.height + 'px';
+  renderGrid();
+}
+
+function renderGrid() {
+  const g = parseInt(document.getElementById('gridSelect').value);
+  const z = state.zoom;
+  gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+  if (!g) return;
+  gridCtx.strokeStyle = 'rgba(255,255,255,0.08)';
+  gridCtx.lineWidth = 0.5;
+  for (let x = 0; x <= state.canvasW; x += g) {
+    gridCtx.beginPath();
+    gridCtx.moveTo(x * z, 0);
+    gridCtx.lineTo(x * z, gridCanvas.height);
+    gridCtx.stroke();
+  }
+  for (let y = 0; y <= state.canvasH; y += g) {
+    gridCtx.beginPath();
+    gridCtx.moveTo(0, y * z);
+    gridCtx.lineTo(gridCanvas.width, y * z);
+    gridCtx.stroke();
+  }
+}
+
+function adjustZoom(delta) {
+  const zooms = [1,2,3,4,6,8,10,12,16,20];
+  let idx = zooms.indexOf(state.zoom);
+  idx = Math.max(0, Math.min(zooms.length - 1, idx + delta));
+  state.zoom = zooms[idx];
+  document.getElementById('zoomLabel').textContent = '×' + state.zoom;
+  applyZoom();
+}
+
+// ============================================================
+// PALETTE
+// ============================================================
+function buildPalette() {
+  const el = document.getElementById('palette');
+  el.innerHTML = '';
+  palette.forEach(c => {
+    const s = document.createElement('div');
+    s.className = 'color-swatch';
+    s.style.background = c;
+    s.title = c;
+    s.onclick = () => setFgColor(c);
+    s.oncontextmenu = (e) => { e.preventDefault(); setBgColor(c); };
+    el.appendChild(s);
+  });
+}
+
+function setFgColor(c) {
+  state.fgColor = c;
+  document.getElementById('fgColorDisplay').style.background = c;
+  document.getElementById('fgHex').textContent = c;
+  document.getElementById('fgColorPicker').value = c;
+}
+
+function setBgColor(c) {
+  state.bgColor = c;
+  document.getElementById('bgColorDisplay').style.background = c;
+  document.getElementById('bgHex').textContent = c;
+  document.getElementById('bgColorPicker').value = c;
+}
+
+// ============================================================
+// TOOLS
+// ============================================================
+function setTool(t) {
+  state.tool = t;
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('tool-' + t);
+  if (btn) btn.classList.add('active');
+}
+
+function getPixelPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.floor((e.clientX - rect.left) / state.zoom);
+  const y = Math.floor((e.clientY - rect.top) / state.zoom);
+  return { x, y };
+}
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return { r, g, b, a: Math.round(alpha * 255 / 100) };
+}
+
+function drawPixel(x, y, color, size) {
+  if (x < 0 || y < 0 || x >= state.canvasW || y >= state.canvasH) return;
+  const s = size || state.brushSize;
+  const half = Math.floor(s / 2);
+  for (let dx = -half; dx < s - half; dx++) {
+    for (let dy = -half; dy < s - half; dy++) {
+      const px = x + dx, py = y + dy;
+      if (px < 0 || py < 0 || px >= state.canvasW || py >= state.canvasH) continue;
+      if (state.tool === 'eraser') {
+        ctx.clearRect(px, py, 1, 1);
+      } else {
+        const rgba = hexToRgba(color, state.opacity);
+        ctx.fillStyle = `rgba(${rgba.r},${rgba.g},${rgba.b},${rgba.a/255})`;
+        ctx.fillRect(px, py, 1, 1);
+      }
+    }
+  }
+  updatePreview();
+}
+
+function floodFill(x, y, newColor) {
+  const imageData = ctx.getImageData(0, 0, state.canvasW, state.canvasH);
+  const data = imageData.data;
+  const idx = (y * state.canvasW + x) * 4;
+  const oldR = data[idx], oldG = data[idx+1], oldB = data[idx+2], oldA = data[idx+3];
+  const nc = hexToRgba(newColor, 100);
+  if (oldR===nc.r && oldG===nc.g && oldB===nc.b && oldA===nc.a) return;
+  const stack = [[x, y]];
+  while (stack.length) {
+    const [cx, cy] = stack.pop();
+    if (cx < 0 || cy < 0 || cx >= state.canvasW || cy >= state.canvasH) continue;
+    const i = (cy * state.canvasW + cx) * 4;
+    if (data[i]!==oldR||data[i+1]!==oldG||data[i+2]!==oldB||data[i+3]!==oldA) continue;
+    data[i]=nc.r; data[i+1]=nc.g; data[i+2]=nc.b; data[i+3]=255;
+    stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
+  }
+  ctx.putImageData(imageData, 0, 0);
+  updatePreview();
+}
+
+function eyeDrop(x, y) {
+  const d = ctx.getImageData(x, y, 1, 1).data;
+  const hex = '#' + [d[0],d[1],d[2]].map(v=>v.toString(16).padStart(2,'0')).join('');
+  setFgColor(hex);
+}
+
+// Drawing state for rect/line
+let tempImageData = null;
+
+canvas.addEventListener('mousedown', e => {
+  const { x, y } = getPixelPos(e);
+  if (x < 0 || y < 0 || x >= state.canvasW || y >= state.canvasH) return;
+  state.drawing = true;
+  state.startX = x; state.startY = y;
+
+  if (state.tool === 'fill') {
+    const col = e.button === 2 ? state.bgColor : state.fgColor;
+    floodFill(x, y, col);
+    pushHistory();
+  } else if (state.tool === 'eyedropper') {
+    eyeDrop(x, y);
+  } else if (state.tool === 'rect' || state.tool === 'line') {
+    tempImageData = ctx.getImageData(0, 0, state.canvasW, state.canvasH);
+  } else {
+    const col = e.button === 2 ? state.bgColor : state.fgColor;
+    drawPixel(x, y, col);
+    state.lastX = x; state.lastY = y;
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (!state.drawing) return;
+  const { x, y } = getPixelPos(e);
+  if (x < 0 || y < 0 || x >= state.canvasW || y >= state.canvasH) return;
+  const col = state.fgColor;
+
+  if (state.tool === 'pencil' || state.tool === 'eraser') {
+    if (x === state.lastX && y === state.lastY) return;
+    // Bresenham line
+    let x0 = state.lastX, y0 = state.lastY, x1 = x, y1 = y;
+    const dx = Math.abs(x1-x0), dy = Math.abs(y1-y0);
+    const sx = x0<x1?1:-1, sy = y0<y1?1:-1;
+    let err = dx-dy;
+    while(true) {
+      drawPixel(x0, y0, col);
+      if(x0===x1&&y0===y1) break;
+      const e2 = 2*err;
+      if(e2>-dy){err-=dy;x0+=sx;}
+      if(e2<dx){err+=dx;y0+=sy;}
+    }
+    state.lastX = x; state.lastY = y;
+  } else if (state.tool === 'rect') {
+    ctx.putImageData(tempImageData, 0, 0);
+    const rx = Math.min(state.startX, x), ry = Math.min(state.startY, y);
+    const rw = Math.abs(x - state.startX) + 1, rh = Math.abs(y - state.startY) + 1;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rh - 1);
+    updatePreview();
+  } else if (state.tool === 'line') {
+    ctx.putImageData(tempImageData, 0, 0);
+    const rgba = hexToRgba(col, 100);
+    ctx.strokeStyle = col;
+    ctx.lineWidth = state.brushSize;
+    ctx.beginPath();
+    ctx.moveTo(state.startX + 0.5, state.startY + 0.5);
+    ctx.lineTo(x + 0.5, y + 0.5);
+    ctx.stroke();
+    updatePreview();
+  }
+});
+
+canvas.addEventListener('mouseup', e => {
+  if (state.drawing) {
+    state.drawing = false;
+    pushHistory();
+    updateFrameThumb();
+  }
+});
+
+canvas.addEventListener('mouseleave', e => {
+  if (state.drawing) {
+    state.drawing = false;
+    pushHistory();
+    updateFrameThumb();
+  }
+});
+
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+// ============================================================
+// HISTORY
+// ============================================================
+function pushHistory() {
+  const snap = ctx.getImageData(0, 0, state.canvasW, state.canvasH);
+  state.history = state.history.slice(0, state.historyIndex + 1);
+  state.history.push(snap);
+  if (state.history.length > 30) state.history.shift();
+  state.historyIndex = state.history.length - 1;
+  updateHistoryDots();
+}
+
+function undo() {
+  if (state.historyIndex <= 0) return;
+  state.historyIndex--;
+  ctx.putImageData(state.history[state.historyIndex], 0, 0);
+  updateHistoryDots();
+  updatePreview();
+}
+
+function redo() {
+  if (state.historyIndex >= state.history.length - 1) return;
+  state.historyIndex++;
+  ctx.putImageData(state.history[state.historyIndex], 0, 0);
+  updateHistoryDots();
+  updatePreview();
+}
+
+function updateHistoryDots() {
+  const el = document.getElementById('historyDots');
+  el.innerHTML = '';
+  const show = Math.min(state.history.length, 10);
+  for (let i = 0; i < show; i++) {
+    const d = document.createElement('div');
+    d.className = 'history-dot' + (i <= state.historyIndex ? ' filled' : '') + (i === state.historyIndex ? ' active' : '');
+    el.appendChild(d);
+  }
+}
+
+// ============================================================
+// TRANSFORMS
+// ============================================================
+function flipH() {
+  const tmp = document.createElement('canvas');
+  tmp.width = state.canvasW; tmp.height = state.canvasH;
+  const tc = tmp.getContext('2d');
+  tc.translate(state.canvasW, 0);
+  tc.scale(-1, 1);
+  tc.drawImage(canvas, 0, 0);
+  ctx.clearRect(0,0,state.canvasW,state.canvasH);
+  ctx.drawImage(tmp, 0, 0);
+  pushHistory();
+  updatePreview();
+}
+
+function flipV() {
+  const tmp = document.createElement('canvas');
+  tmp.width = state.canvasW; tmp.height = state.canvasH;
+  const tc = tmp.getContext('2d');
+  tc.translate(0, state.canvasH);
+  tc.scale(1, -1);
+  tc.drawImage(canvas, 0, 0);
+  ctx.clearRect(0,0,state.canvasW,state.canvasH);
+  ctx.drawImage(tmp, 0, 0);
+  pushHistory();
+  updatePreview();
+}
+
+function rotateCanvas() {
+  const tmp = document.createElement('canvas');
+  tmp.width = state.canvasH; tmp.height = state.canvasW;
+  const tc = tmp.getContext('2d');
+  tc.translate(state.canvasH / 2, state.canvasW / 2);
+  tc.rotate(Math.PI / 2);
+  tc.drawImage(canvas, -state.canvasW / 2, -state.canvasH / 2);
+  const ow = state.canvasW, oh = state.canvasH;
+  state.canvasW = oh; state.canvasH = ow;
+  canvas.width = state.canvasW; canvas.height = state.canvasH;
+  ctx.drawImage(tmp, 0, 0);
+  applyZoom();
+  pushHistory();
+  updatePreview();
+}
+
+// ============================================================
+// FRAMES / ANIMATION
+// ============================================================
+function addFrame() {
+  const snap = ctx.getImageData(0, 0, state.canvasW, state.canvasH);
+  state.frames.push(snap);
+  state.currentFrame = state.frames.length - 1;
+  renderFrameStrip();
+}
+
+function saveCurrentFrame() {
+  state.frames[state.currentFrame] = ctx.getImageData(0, 0, state.canvasW, state.canvasH);
+}
+
+function loadFrame(i) {
+  saveCurrentFrame();
+  state.currentFrame = i;
+  ctx.clearRect(0, 0, state.canvasW, state.canvasH);
+  ctx.putImageData(state.frames[i], 0, 0);
+  renderFrameStrip();
+  pushHistory();
+}
+
+function renderFrameStrip() {
+  const el = document.getElementById('frameThumbs');
+  el.innerHTML = '';
+  state.frames.forEach((f, i) => {
+    const c = document.createElement('canvas');
+    c.width = state.canvasW; c.height = state.canvasH;
+    c.className = 'frame-thumb' + (i === state.currentFrame ? ' active' : '');
+    c.title = 'Frame ' + (i + 1);
+    c.getContext('2d').putImageData(f, 0, 0);
+    c.onclick = () => loadFrame(i);
+    el.appendChild(c);
+  });
+}
+
+function updateFrameThumb() {
+  const thumbs = document.querySelectorAll('.frame-thumb');
+  if (thumbs[state.currentFrame]) {
+    const c = thumbs[state.currentFrame];
+    const tc = c.getContext('2d');
+    tc.clearRect(0,0,c.width,c.height);
+    tc.putImageData(ctx.getImageData(0,0,state.canvasW,state.canvasH),0,0);
+  }
+}
+
+function togglePlay() {
+  state.playing = !state.playing;
+  document.getElementById('playBtn').textContent = state.playing ? '⏹ Stop' : '▶ Play';
+  if (state.playing) {
+    const fps = parseInt(document.getElementById('fpsInput').value) || 8;
+    let fi = 0;
+    state.playInterval = setInterval(() => {
+      if (!state.frames.length) return;
+      previewCtx.clearRect(0,0,64,64);
+      previewCtx.imageSmoothingEnabled = false;
+      previewCtx.drawImage(
+        (() => {
+          const tc = document.createElement('canvas');
+          tc.width=state.canvasW; tc.height=state.canvasH;
+          tc.getContext('2d').putImageData(state.frames[fi],0,0);
+          return tc;
+        })(), 0, 0, 64, 64
+      );
+      fi = (fi + 1) % state.frames.length;
+    }, 1000 / fps);
+  } else {
+    clearInterval(state.playInterval);
+    updatePreview();
+  }
+}
+
+function updatePreview() {
+  if (state.playing) return;
+  previewCtx.clearRect(0,0,64,64);
+  previewCtx.imageSmoothingEnabled = false;
+  previewCtx.drawImage(canvas, 0, 0, 64, 64);
+}
+
+// ============================================================
+// SLOTS / CHARACTER SHEET
+// ============================================================
+function buildSlotGrid() {
+  const el = document.getElementById('slotGrid');
+  el.innerHTML = '';
+  state.slotNames.forEach((name, i) => {
+    const div = document.createElement('div');
+    div.className = 'sprite-slot' + (i === state.currentSlot ? ' current-slot' : '');
+    div.onclick = () => { state.currentSlot = i; document.getElementById('slotSelect').value = i; buildSlotGrid(); };
+
+    const badge = document.createElement('div');
+    badge.className = 'slot-badge' + (state.slots[i] ? ' filled' : '');
+    div.appendChild(badge);
+
+    const c = document.createElement('canvas');
+    c.className = 'slot-canvas';
+    c.width = 32; c.height = 32;
+    if (state.slots[i]) c.getContext('2d').putImageData(
+      (() => {
+        const tmp = document.createElement('canvas');
+        tmp.width = state.canvasW; tmp.height = state.canvasH;
+        tmp.getContext('2d').putImageData(state.slots[i], 0, 0);
+        const sc = document.createElement('canvas');
+        sc.width=32;sc.height=32;
+        sc.getContext('2d').drawImage(tmp,0,0,32,32);
+        return sc.getContext('2d').getImageData(0,0,32,32);
+      })(), 0, 0
+    );
+    div.appendChild(c);
+
+    const lbl = document.createElement('div');
+    lbl.className = 'slot-label';
+    lbl.textContent = name;
+    div.appendChild(lbl);
+    el.appendChild(div);
+  });
+}
+
+function switchSlot(i) {
+  state.currentSlot = parseInt(i);
+  buildSlotGrid();
+}
+
+function saveToSlot() {
+  state.slots[state.currentSlot] = ctx.getImageData(0, 0, state.canvasW, state.canvasH);
+  buildSlotGrid();
+  const msg = document.createElement('div');
+  msg.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--accent2);color:white;font-family:Share Tech Mono,monospace;font-size:11px;padding:8px 20px;z-index:9998;border:1px solid #9333ea;';
+  msg.textContent = '✅ Salvo no slot: ' + state.slotNames[state.currentSlot];
+  document.body.appendChild(msg);
+  setTimeout(() => msg.remove(), 2000);
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+function exportPNG() {
+  const link = document.createElement('a');
+  link.download = 'sprite.png';
+  link.href = canvas.toDataURL();
+  link.click();
+}
+
+function exportSpritesheet() {
+  const filled = state.slots.filter(Boolean);
+  if (!filled.length) { alert('Nenhum slot preenchido!'); return; }
+  const cols = 4;
+  const rows = Math.ceil(filled.length / cols);
+  const tw = state.canvasW * cols, th = state.canvasH * rows;
+  const tmp = document.createElement('canvas');
+  tmp.width = tw; tmp.height = th;
+  const tc = tmp.getContext('2d');
+  tc.fillStyle = '#000';
+  tc.fillRect(0,0,tw,th);
+  filled.forEach((slot, i) => {
+    const col = i % cols, row = Math.floor(i / cols);
+    const sc = document.createElement('canvas');
+    sc.width = state.canvasW; sc.height = state.canvasH;
+    sc.getContext('2d').putImageData(slot, 0, 0);
+    tc.drawImage(sc, col * state.canvasW, row * state.canvasH);
+  });
+  const link = document.createElement('a');
+  link.download = 'spritesheet.png';
+  link.href = tmp.toDataURL();
+  link.click();
+}
+
+function exportSheet() {
+  const tmp = document.createElement('canvas');
+  const cols = 4;
+  const rows = 2;
+  const cellW = 80, cellH = 100, padding = 16;
+  tmp.width = cols * (cellW + padding) + padding;
+  tmp.height = rows * (cellH + padding) + padding + 40;
+  const tc = tmp.getContext('2d');
+  tc.fillStyle = '#12121a';
+  tc.fillRect(0, 0, tmp.width, tmp.height);
+  tc.fillStyle = '#ff2d78';
+  tc.fillRect(0, 0, tmp.width, 2);
+  tc.font = 'bold 12px monospace';
+  tc.fillStyle = '#ffd700';
+  tc.fillText('CHARACTER SHEET', 16, 24);
+  state.slotNames.forEach((name, i) => {
+    const col = i % cols, row = Math.floor(i / cols);
+    const x = col * (cellW + padding) + padding;
+    const y = row * (cellH + padding) + padding + 40;
+    tc.strokeStyle = '#2a2a40';
+    tc.lineWidth = 1;
+    tc.strokeRect(x, y, cellW, cellH);
+    if (state.slots[i]) {
+      const sc = document.createElement('canvas');
+      sc.width = state.canvasW; sc.height = state.canvasH;
+      sc.getContext('2d').putImageData(state.slots[i], 0, 0);
+      tc.imageSmoothingEnabled = false;
+      tc.drawImage(sc, x + (cellW - 64)/2, y + 4, 64, 64);
+    }
+    tc.font = '9px monospace';
+    tc.fillStyle = '#666688';
+    tc.textAlign = 'center';
+    tc.fillText(name, x + cellW/2, y + cellH - 6);
+    tc.textAlign = 'left';
+  });
+  const link = document.createElement('a');
+  link.download = 'character_sheet.png';
+  link.href = tmp.toDataURL();
+  link.click();
+}
+
+// ============================================================
+// NEW CANVAS MODAL
+// ============================================================
+function openNewModal() {
+  document.getElementById('newModal').classList.add('open');
+}
+
+function closeNewModal() {
+  document.getElementById('newModal').classList.remove('open');
+}
+
+function applyPreset(val) {
+  if (!val) return;
+  const [w, h] = val.split(',').map(Number);
+  document.getElementById('mW').value = w;
+  document.getElementById('mH').value = h;
+}
+
+function createNewCanvas() {
+  const w = parseInt(document.getElementById('mW').value);
+  const h = parseInt(document.getElementById('mH').value);
+  const bg = document.getElementById('mBg').value;
+  const transparent = document.getElementById('mTransparent').checked;
+  closeNewModal();
+  state.frames = [];
+  state.history = [];
+  state.historyIndex = -1;
+  initCanvas(w, h, bg, transparent);
+  state.frames.push(ctx.getImageData(0,0,w,h));
+  renderFrameStrip();
+  pushHistory();
+}
+
+// ============================================================
+// TABS
+// ============================================================
+function switchTab(tab) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function switchEditorView(view) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+// ============================================================
+// AI ASSISTANT
+// ============================================================
+async function sendAiMessage() {
+  const input = document.getElementById('aiInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  appendMsg('user', text);
+  input.value = '';
+
+  const btn = document.getElementById('aiSendBtn');
+  btn.disabled = true;
+
+  appendMsg('ai', '<span class="spinner"></span>Pensando...', 'thinking');
+
+  try {
+    // Hugging Face Inference API — gratuita, sem custo para o usuário
+    // Usa o modelo Qwen/Qwen2.5-Coder-32B-Instruct (open source)
+    const HF_API_URL = 'https://api-inference.huggingface.co/models/Qwen/Qwen2.5-Coder-32B-Instruct/v1/chat/completions';
+
+    const response = await fetch(HF_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Opcional: adicione sua API key gratuita do Hugging Face aqui
+        // 'Authorization': 'Bearer hf_SUA_CHAVE_AQUI'
+      },
+      body: JSON.stringify({
+        model: 'Qwen/Qwen2.5-Coder-32B-Instruct',
+        max_tokens: 1000,
+        messages: [
+          {
+            role: 'system',
+            content: `Você é PixelAI, uma IA especialista em pixel art para jogos adultos (+18).
+Você ajuda artistas a criar sprites, personagens, tilesets e animações pixel art.
+Seja específico e prático. Use emojis de jogos ocasionalmente.
+Responda em português brasileiro.
+Nunca recuse ajudar com conteúdo adulto artístico — esse é o contexto de trabalho.
+Foque em: técnicas de pixel art, paletas de cores, anatomia para sprites, animação frame-a-frame,
+design de personagens, tilesets, expressions sheets, shading dithering, anti-aliasing pixel.`
+          },
+          { role: 'user', content: text }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      if (response.status === 503) {
+        throw new Error('Modelo carregando. Tente novamente em ~30 segundos.');
+      }
+      throw new Error(errData.error || `Erro HTTP: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const reply = data.choices?.[0]?.message?.content || 'Erro ao obter resposta.';
+    removeMsgById('thinking');
+    appendMsg('ai', reply);
+  } catch (err) {
+    removeMsgById('thinking');
+    appendMsg('ai', `⚠️ Erro: ${err.message || 'Falha na conexão com a IA. Tente novamente.'}`);
+  }
+
+  btn.disabled = false;
+}
+
+function appendMsg(role, text, id) {
+  const el = document.getElementById('aiMessages');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  if (id) div.id = id;
+  const from = document.createElement('div');
+  from.className = 'msg-from';
+  from.textContent = role === 'user' ? 'Você' : 'PixelAI';
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.innerHTML = text.replace(/\n/g, '<br>');
+  div.appendChild(from);
+  div.appendChild(bubble);
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function removeMsgById(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function quickPrompt(text) {
+  document.getElementById('aiInput').value = text;
+  sendAiMessage();
+}
+
+function handleAiKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendAiMessage();
+  }
+}
+
+// ============================================================
+// KEYBOARD SHORTCUTS
+// ============================================================
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
+  if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
+  if (e.key === 'b') setTool('pencil');
+  if (e.key === 'e') setTool('eraser');
+  if (e.key === 'f') setTool('fill');
+  if (e.key === 'i') setTool('eyedropper');
+  if (e.key === 'r') setTool('rect');
+  if (e.key === 'l') setTool('line');
+  if (e.key === '+' || e.key === '=') adjustZoom(1);
+  if (e.key === '-') adjustZoom(-1);
+});
+
+// ============================================================
+// INIT
+// ============================================================
+buildPalette();
+initCanvas(32, 32, '#000000', false);
+state.frames.push(ctx.getImageData(0, 0, 32, 32));
+renderFrameStrip();
+buildSlotGrid();
+pushHistory();
+
+document.getElementById('brushSize').addEventListener('input', e => {
+  state.brushSize = parseInt(e.target.value) || 1;
+});
+document.getElementById('opacitySlider').addEventListener('input', e => {
+  state.opacity = parseInt(e.target.value);
+});
+</script>
+</body>
+</html>
